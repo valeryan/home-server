@@ -1,0 +1,180 @@
+version: "2"
+
+services:
+  data:
+    image: alpine
+    command: /bin/sh
+    volumes:
+      - ./logs:/data/logs
+
+  mysql:
+    build:
+      context: .
+      dockerfile: mysql.dockerfile
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+    volumes:
+      - ./logs:/data/logs
+      - ./mysql:/var/lib/mysql
+      - ./etc/mysql/conf.d:/etc/mysql/conf.d
+    networks:
+      - mysql-tier
+
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./etc/nginx/conf.d:/etc/nginx/conf.d
+      - ./etc/nginx/vhost.d:/etc/nginx/vhost.d
+      - ./etc/nginx/html:/usr/share/nginx/html
+      - ./etc/nginx/certs:/etc/nginx/certs:ro
+      - ./etc/nginx/proxy.conf:/etc/nginx/conf.d/my_proxy.conf:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    networks:
+      - proxy-tier
+
+  letsencrypt-nginx-proxy-companion:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: letsencrypt-nginx-proxy-companion
+    volumes_from:
+      - nginx-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./etc/nginx/certs:/etc/nginx/certs:rw
+  fpm:
+    build:
+      context: .
+      dockerfile: fpm.dockerfile
+    container_name: nextcloud-fpm
+    volumes_from:
+      - data
+    volumes:
+      - ./nextcloud/app:/data/app
+      - ./nextcloud/data:/data/app/data
+      - ./nextcloud/config:/data/app/config
+    links:
+      - mysql
+    networks:
+      - mysql-tier
+      - proxy-tier
+
+  nextcloud:
+    build:
+      context: .
+      dockerfile: nextcloud.dockerfile
+    container_name: nextcloud
+    depends_on:
+      - fpm
+    links:
+      - mysql
+    environment:
+      - VIRTUAL_HOST=${NEXTCLOUD_HOST}
+      - VIRTUAL_NETWORK=nginx-proxy
+      - VIRTUAL_PORT=80
+      - LETSENCRYPT_HOST=${NEXTCLOUD_HOST}
+      - LETSENCRYPT_EMAIL=${LE_EMAIL}
+    volumes_from:
+      - data
+    volumes:
+      - ./nextcloud/app:/data/app
+      - ./nextcloud/data:/data/app/data
+      - ./nextcloud/config:/data/app/config
+    networks:
+      - proxy-tier
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - proxy-tier
+
+  mineos-proxy:
+    build:
+      context: .
+      dockerfile: mineos.dockerfile
+    container_name: mineos-proxy
+    depends_on:
+      - mineos
+    environment:
+      - VIRTUAL_HOST=${MINEOS_HOST}
+      - VIRTUAL_NETWORK=nginx-proxy
+      - VIRTUAL_PORT=80
+      - LETSENCRYPT_HOST=${MINEOS_HOST}
+      - LETSENCRYPT_EMAIL=${LE_EMAIL}
+    networks:
+      - proxy-tier
+      - mineos-tier
+
+  mineos:
+    image: hexparrot/mineos:node-wily
+    container_name: mineos
+    volumes:
+      - ./minecraft:/var/games/minecraft
+    ports:
+      - "25565:25565"
+      - "8443:8443"
+    environment:
+      - USER_NAME=${MINEOS_USER}
+      - USER_PASSWORD=${MINEOS_PASS}
+    networks:
+      - mineos-tier
+
+  plex-proxy:
+    build:
+      context: .
+      dockerfile: plex.dockerfile
+    container_name: plex-proxy
+    depends_on:
+      - plex
+    environment:
+      - VIRTUAL_HOST=${PLEX_HOST}
+      - VIRTUAL_NETWORK=nginx-proxy
+      - VIRTUAL_PORT=80
+      - LETSENCRYPT_HOST=${PLEX_HOST}
+      - LETSENCRYPT_EMAIL=${LE_EMAIL}
+    networks:
+      - proxy-tier
+      - plex-tier
+
+  plex:
+    container_name: plex
+    image: plexinc/pms-docker
+    restart: unless-stopped
+    ports:
+      - 32400:32400/tcp
+      - 3005:3005/tcp
+      - 8324:8324/tcp
+      - 32469:32469/tcp
+      - 1900:1900/udp
+      - 32410:32410/udp
+      - 32412:32412/udp
+      - 32413:32413/udp
+      - 32414:32414/udp
+    environment:
+      - TZ=America/Chicago
+      - ADVERTISE_IP=http://192.168.1.2:32400/
+    hostname: PlexServer
+    volumes:
+      - ./plex/config:/config
+      - ./plex/temp:/transcode
+      - ./plex/data:/data
+    networks:
+      - plex-tier
+
+networks:
+  proxy-tier:
+    driver: bridge
+  mysql-tier:
+    driver: bridge
+  mineos-tier:
+    driver: bridge
+  plex-tier:
+    driver: bridge

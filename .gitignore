@@ -1,0 +1,9 @@
+docker-configs
+/mysql
+/nextcloud
+/minecraft
+/plex
+/logs
+*.pem
+.DS_Store
+.env
