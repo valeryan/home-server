@@ -15,7 +15,7 @@ services:
     ports:
       - "3306:3306"
     environment:
-      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - ./logs:/data/logs
       - ./mysql:/var/lib/mysql
@@ -160,7 +160,7 @@ services:
       - 32414:32414/udp
     environment:
       - TZ=America/Chicago
-      - ADVERTISE_IP=http://192.168.1.2:32400/
+      - ADVERTISE_IP=http://${PLEX_IP}:32400/
     hostname: PlexServer
     volumes:
       - ./plex/config:/config
