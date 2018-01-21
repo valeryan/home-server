@@ -10,6 +10,7 @@ services:
   mysql:
     image: mysql
     container_name: mysql
+    restart: unless-stopped
     ports:
       - "3306:3306"
     environment:
@@ -22,56 +23,43 @@ services:
       - mysql-tier
 
   nginx-web:
-    image: nginx
-    labels:
-        com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
+    # image: jwilder/nginx-proxy
+    build:
+      context: .
+      dockerfile: proxy.dockerfile
     container_name: ${NGINX_WEB}
-    restart: always
+    restart: unless-stopped
     ports:
-      - "${IP}:80:80"
-      - "${IP}:443:443"
+      - "80:80"
+      - "443:443"
     volumes:
-      - ${NGINX_FILES_PATH}/conf.d:/etc/nginx/conf.d
-      - ${NGINX_FILES_PATH}/certs:/etc/nginx/certs:ro
-      - ${NGINX_FILES_PATH}/html:/usr/share/nginx/html
-      - ${NGINX_FILES_PATH}/htpasswd:/etc/nginx/htpasswd:ro
-      - ${NGINX_FILES_PATH}/vhost.d:/etc/nginx/vhost.d
-    networks:
-     - proxy-tier
-
-  nginx-gen:
-    image: jwilder/docker-gen
-    command: -notify-sighup ${NGINX_WEB} -watch -wait 5s:30s /etc/docker-gen/templates/nginx.tmpl /etc/nginx/conf.d/default.conf
-    container_name: ${DOCKER_GEN}
-    restart: always
-    volumes_from:
-      - ${NGINX_WEB}
-    volumes:
+      - ./proxy/conf.d:/etc/nginx/conf.d
+      - ./proxy/certs:/etc/nginx/certs:ro
+      - ./proxy/html:/usr/share/nginx/html
+      - ./proxy/htpasswd:/etc/nginx/htpasswd:ro
+      - ./proxy/vhost.d:/etc/nginx/vhost.d
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - ${NGINX_FILES_PATH}/templates:/etc/docker-gen/templates:ro
     networks:
-     - proxy-tier
+      - proxy-tier
 
   nginx-letsencrypt:
     image: jrcs/letsencrypt-nginx-proxy-companion
     container_name: ${LETS_ENCRYPT}
-    restart: always
+    restart: unless-stopped
     volumes_from:
       - ${NGINX_WEB}
     volumes:
-      - ${NGINX_FILES_PATH}/certs:/etc/nginx/certs:rw
+      - ./proxy/certs:/etc/nginx/certs:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      NGINX_DOCKER_GEN_CONTAINER: ${DOCKER_GEN}
       NGINX_PROXY_CONTAINER: ${NGINX_WEB}
-    networks:
-      - proxy-tier
 
   fpm:
     build:
       context: .
       dockerfile: fpm.dockerfile
     container_name: nextcloud-fpm
+    restart: unless-stopped
     volumes_from:
       - data
     volumes:
@@ -89,6 +77,7 @@ services:
       context: .
       dockerfile: nextcloud.dockerfile
     container_name: nextcloud
+    restart: unless-stopped
     depends_on:
       - fpm
     links:
@@ -111,6 +100,7 @@ services:
   redis:
     image: redis:alpine
     container_name: redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     networks:
@@ -121,6 +111,7 @@ services:
       context: .
       dockerfile: mineos.dockerfile
     container_name: mineos-proxy
+    restart: unless-stopped
     depends_on:
       - mineos
     environment:
@@ -136,6 +127,7 @@ services:
   mineos:
     image: hexparrot/mineos:node-wily
     container_name: mineos
+    restart: unless-stopped
     volumes:
       - ./minecraft:/var/games/minecraft
     ports:
@@ -152,6 +144,7 @@ services:
       context: .
       dockerfile: plex.dockerfile
     container_name: plex-proxy
+    restart: unless-stopped
     depends_on:
       - plex
     environment:
@@ -181,6 +174,8 @@ services:
     environment:
       - TZ=America/Chicago
       - ADVERTISE_IP=http://${IP}:32400/
+      - PLEX_UID=1002
+      - PLEX_GID=1004
     hostname: PlexServer
     volumes:
       - ./plex/config:/config

@@ -3,6 +3,7 @@ docker-configs
 /nextcloud
 /minecraft
 /plex
+/proxy
 /logs
 *.pem
 .DS_Store
