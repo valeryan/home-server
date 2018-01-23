@@ -61,45 +61,35 @@ services:
     environment:
       NGINX_PROXY_CONTAINER: ${NGINX_WEB}
 
-  fpm:
-    build:
-      context: .
-      dockerfile: fpm.dockerfile
-    container_name: nextcloud-fpm
-    restart: unless-stopped
-    volumes_from:
-      - data
-    volumes:
-      - ./nextcloud/app:/data/app
-      - ./nextcloud/data:/data/app/data
-      - ./nextcloud/config:/data/app/config
-    links:
+  nextcloud-app:
+    image: nextcloud:fpm
+    container_name: nextcloud-app
+    depends_on:
       - mysql
+    volumes:
+      - ./nextcloud/app:/var/www/html
+      - ./nextcloud/data:/var/www/html/data
+      - ./nextcloud/config:/var/www/html/config
+    restart: unless-stopped
     networks:
       - proxy-tier
 
-  nextcloud:
+  nextcloud-web:
     build:
       context: .
       dockerfile: nextcloud.dockerfile
-    container_name: nextcloud
-    restart: unless-stopped
+    container_name: nextcloud-web
     depends_on:
-      - fpm
-    links:
-      - mysql
+      - nextcloud-app
+    volumes_from:
+      - nextcloud-app
+    restart: unless-stopped
     environment:
       - VIRTUAL_HOST=${NEXTCLOUD_HOST}
       - VIRTUAL_NETWORK=${NGINX_WEB}
       - VIRTUAL_PORT=80
       - LETSENCRYPT_HOST=${NEXTCLOUD_HOST}
       - LETSENCRYPT_EMAIL=${LE_EMAIL}
-    volumes_from:
-      - data
-    volumes:
-      - ./nextcloud/app:/data/app
-      - ./nextcloud/data:/data/app/data
-      - ./nextcloud/config:/data/app/config
     networks:
       - proxy-tier
 
