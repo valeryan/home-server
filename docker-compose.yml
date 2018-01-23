@@ -7,6 +7,16 @@ services:
     volumes:
       - ./logs:/data/logs
 
+  proxy-data:
+    image: alpine
+    command: /bin/sh
+    volumes:
+      - ./proxy/conf.d:/etc/nginx/conf.d
+      - ./proxy/certs:/etc/nginx/certs:ro
+      - ./proxy/html:/usr/share/nginx/html
+      - ./proxy/htpasswd:/etc/nginx/htpasswd:ro
+      - ./proxy/vhost.d:/etc/nginx/vhost.d
+
   mysql:
     image: mysql
     container_name: mysql
@@ -15,8 +25,9 @@ services:
       - "3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
+    volumes_from:
+      - data
     volumes:
-      - ./logs:/data/logs
       - ./mysql:/var/lib/mysql
       - ./etc/mysql/conf.d:/etc/mysql/conf.d
     networks:
@@ -31,12 +42,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    volumes_from:
+      - proxy-data
     volumes:
-      - ./proxy/conf.d:/etc/nginx/conf.d
-      - ./proxy/certs:/etc/nginx/certs:ro
-      - ./proxy/html:/usr/share/nginx/html
-      - ./proxy/htpasswd:/etc/nginx/htpasswd:ro
-      - ./proxy/vhost.d:/etc/nginx/vhost.d
       - /var/run/docker.sock:/tmp/docker.sock:ro
     networks:
       - proxy-tier
@@ -46,7 +54,7 @@ services:
     container_name: ${LETS_ENCRYPT}
     restart: unless-stopped
     volumes_from:
-      - ${NGINX_WEB}
+      - proxy-data
     volumes:
       - ./proxy/certs:/etc/nginx/certs:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -126,8 +134,9 @@ services:
       - proxy-tier
 
   plex:
-    container_name: plex
     image: plexinc/pms-docker
+    container_name: plex
+    hostname: PlexServer
     restart: unless-stopped
     ports:
       - 32400:32400/tcp
@@ -149,7 +158,6 @@ services:
       - ADVERTISE_IP=http://${IP}:32400/
       - PLEX_UID=${PLEX_UID}
       - PLEX_GID=${PLEX_GID}
-    hostname: PlexServer
     volumes:
       - ./plex/config:/config
       - ./plex/temp:/transcode
