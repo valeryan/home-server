@@ -1,9 +1,0 @@
-#!/bin/bash
-LOC=`pwd`
-
-echo "Starting Universal Containers"
-# bring up mysql
-cd ~/Docker
-docker-compose up -d
-echo "Startup Complete"
-cd $LOC

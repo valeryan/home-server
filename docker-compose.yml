@@ -20,10 +20,9 @@ services:
       - ./mysql:/var/lib/mysql
       - ./etc/mysql/conf.d:/etc/mysql/conf.d
     networks:
-      - mysql-tier
+      - proxy-tier
 
   nginx-web:
-    # image: jwilder/nginx-proxy
     build:
       context: .
       dockerfile: proxy.dockerfile
@@ -69,7 +68,6 @@ services:
     links:
       - mysql
     networks:
-      - mysql-tier
       - proxy-tier
 
   nextcloud:
@@ -106,24 +104,6 @@ services:
     networks:
       - proxy-tier
 
-  mineos-proxy:
-    build:
-      context: .
-      dockerfile: mineos.dockerfile
-    container_name: mineos-proxy
-    restart: unless-stopped
-    depends_on:
-      - mineos
-    environment:
-      - VIRTUAL_HOST=${MINEOS_HOST}
-      - VIRTUAL_NETWORK=${NGINX_WEB}
-      - VIRTUAL_PORT=80
-      - LETSENCRYPT_HOST=${MINEOS_HOST}
-      - LETSENCRYPT_EMAIL=${LE_EMAIL}
-    networks:
-      - proxy-tier
-      - mineos-tier
-
   mineos:
     image: hexparrot/mineos:node-wily
     container_name: mineos
@@ -134,28 +114,16 @@ services:
       - "25565:25565"
       - "8443:8443"
     environment:
+      - VIRTUAL_HOST=${MINEOS_HOST}
+      - VIRTUAL_NETWORK=${NGINX_WEB}
+      - VIRTUAL_PORT=8443
+      - VIRTUAL_PROTO=https
+      - LETSENCRYPT_HOST=${MINEOS_HOST}
+      - LETSENCRYPT_EMAIL=${LE_EMAIL}
       - USER_NAME=${MINEOS_USER}
       - USER_PASSWORD=${MINEOS_PASS}
     networks:
-      - mineos-tier
-
-  plex-proxy:
-    build:
-      context: .
-      dockerfile: plex.dockerfile
-    container_name: plex-proxy
-    restart: unless-stopped
-    depends_on:
-      - plex
-    environment:
-      - VIRTUAL_HOST=${PLEX_HOST}
-      - VIRTUAL_NETWORK=${NGINX_WEB}
-      - VIRTUAL_PORT=80
-      - LETSENCRYPT_HOST=${PLEX_HOST}
-      - LETSENCRYPT_EMAIL=${LE_EMAIL}
-    networks:
       - proxy-tier
-      - plex-tier
 
   plex:
     container_name: plex
@@ -172,24 +140,23 @@ services:
       - 32413:32413/udp
       - 32414:32414/udp
     environment:
+      - VIRTUAL_HOST=${PLEX_HOST}
+      - VIRTUAL_NETWORK=${NGINX_WEB}
+      - VIRTUAL_PORT=32400
+      - LETSENCRYPT_HOST=${PLEX_HOST}
+      - LETSENCRYPT_EMAIL=${LE_EMAIL}
       - TZ=America/Chicago
       - ADVERTISE_IP=http://${IP}:32400/
-      - PLEX_UID=1002
-      - PLEX_GID=1004
+      - PLEX_UID=${PLEX_UID}
+      - PLEX_GID=${PLEX_GID}
     hostname: PlexServer
     volumes:
       - ./plex/config:/config
       - ./plex/temp:/transcode
       - ./plex/data:/data
     networks:
-      - plex-tier
+      - proxy-tier
 
 networks:
   proxy-tier:
-    driver: bridge
-  mysql-tier:
-    driver: bridge
-  mineos-tier:
-    driver: bridge
-  plex-tier:
     driver: bridge
