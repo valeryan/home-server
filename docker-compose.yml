@@ -18,7 +18,7 @@ services:
       - ./proxy/vhost.d:/etc/nginx/vhost.d
 
   mysql:
-    image: mysql
+    image: mysql:5.7
     container_name: mysql
     restart: unless-stopped
     ports:
@@ -146,15 +146,16 @@ services:
       - LETSENCRYPT_EMAIL=${LE_EMAIL}
       - TZ=America/Chicago
       - ADVERTISE_IP=http://${IP}:32400/
-      - PLEX_UID=${PLEX_UID}
-      - PLEX_GID=${PLEX_GID}
+      - PUID=${PLEX_UID}
+      - PGID=${PLEX_GID}
+      - VERSION=latest
     volumes:
       - ./plex/config:/config
       - ./plex/temp:/transcode
       - ./plex/data:/data
     networks:
       - proxy-tier
-
+      
 networks:
   proxy-tier:
     driver: bridge
