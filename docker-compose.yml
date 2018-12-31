@@ -103,11 +103,11 @@ services:
       - proxy-tier
 
   mineos:
-    image: hexparrot/mineos:node-wily
+    image: hexparrot/mineos
     container_name: mineos
     restart: unless-stopped
     volumes:
-      - ./minecraft:/var/games/minecraft
+      - ./minecraft/data:/var/games/minecraft
     ports:
       - "25565:25565"
       - "8443:8443"
