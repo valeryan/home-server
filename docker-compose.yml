@@ -155,7 +155,6 @@ services:
       - ./plex/data:/data
     networks:
       - proxy-tier
-      
 networks:
   proxy-tier:
     driver: bridge

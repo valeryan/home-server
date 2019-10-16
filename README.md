@@ -14,4 +14,3 @@ My Docker configuration for a home server.
 
 1. Copy example.env to .env and modify settings as desired. 
 2. Run `docker-compose build` and `docker-compose up`.
-3. (optional) setup the startup service included so that your docker services self-start with the system.
