@@ -1,22 +1,6 @@
-version: "2"
+version: "3"
 
 services:
-  data:
-    image: alpine
-    command: /bin/sh
-    volumes:
-      - ./logs:/data/logs
-
-  proxy-data:
-    image: alpine
-    command: /bin/sh
-    volumes:
-      - ./proxy/conf.d:/etc/nginx/conf.d
-      - ./proxy/certs:/etc/nginx/certs:ro
-      - ./proxy/html:/usr/share/nginx/html
-      - ./proxy/htpasswd:/etc/nginx/htpasswd:ro
-      - ./proxy/vhost.d:/etc/nginx/vhost.d
-
   mysql:
     image: mysql:5.7
     container_name: mysql
@@ -25,41 +9,44 @@ services:
       - "3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
-    volumes_from:
-      - data
     volumes:
       - ./mysql:/var/lib/mysql
       - ./etc/mysql/conf.d:/etc/mysql/conf.d
     networks:
       - proxy-tier
 
-  nginx-web:
+  proxy:
     build:
       context: .
       dockerfile: proxy.dockerfile
-    container_name: ${NGINX_WEB}
+    container_name: ${PROXY}
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
-    volumes_from:
-      - proxy-data
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./proxy/conf.d:/etc/nginx/conf.d
+      - ./proxy/certs:/etc/nginx/certs:ro
+      - ./proxy/html:/usr/share/nginx/html
+      - ./proxy/htpasswd:/etc/nginx/htpasswd:ro
+      - ./proxy/vhost.d:/etc/nginx/vhost.d
     networks:
       - proxy-tier
 
-  nginx-letsencrypt:
+  proxy-letsencrypt:
     image: jrcs/letsencrypt-nginx-proxy-companion
     container_name: ${LETS_ENCRYPT}
     restart: unless-stopped
-    volumes_from:
-      - proxy-data
     volumes:
-      - ./proxy/certs:/etc/nginx/certs:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./proxy/certs:/etc/nginx/certs:rw
+      - ./proxy/conf.d:/etc/nginx/conf.d
+      - ./proxy/html:/usr/share/nginx/html
+      - ./proxy/htpasswd:/etc/nginx/htpasswd:ro
+      - ./proxy/vhost.d:/etc/nginx/vhost.d
     environment:
-      NGINX_PROXY_CONTAINER: ${NGINX_WEB}
+      NGINX_PROXY_CONTAINER: ${PROXY}
 
   nextcloud-app:
     image: nextcloud:fpm
@@ -81,12 +68,14 @@ services:
     container_name: nextcloud-web
     depends_on:
       - nextcloud-app
-    volumes_from:
-      - nextcloud-app
+    volumes:
+      - ./nextcloud/app:/var/www/html
+      - ./nextcloud/data:/var/www/html/data
+      - ./nextcloud/config:/var/www/html/config
     restart: unless-stopped
     environment:
       - VIRTUAL_HOST=${NEXTCLOUD_HOST}
-      - VIRTUAL_NETWORK=${NGINX_WEB}
+      - VIRTUAL_NETWORK=${PROXY}
       - VIRTUAL_PORT=80
       - LETSENCRYPT_HOST=${NEXTCLOUD_HOST}
       - LETSENCRYPT_EMAIL=${LE_EMAIL}
@@ -113,7 +102,7 @@ services:
       - "8443:8443"
     environment:
       - VIRTUAL_HOST=${MINEOS_HOST}
-      - VIRTUAL_NETWORK=${NGINX_WEB}
+      - VIRTUAL_NETWORK=${PROXY}
       - VIRTUAL_PORT=8443
       - VIRTUAL_PROTO=https
       - LETSENCRYPT_HOST=${MINEOS_HOST}
@@ -140,7 +129,7 @@ services:
       - 32414:32414/udp
     environment:
       - VIRTUAL_HOST=${PLEX_HOST}
-      - VIRTUAL_NETWORK=${NGINX_WEB}
+      - VIRTUAL_NETWORK=${PROXY}
       - VIRTUAL_PORT=32400
       - LETSENCRYPT_HOST=${PLEX_HOST}
       - LETSENCRYPT_EMAIL=${LE_EMAIL}
