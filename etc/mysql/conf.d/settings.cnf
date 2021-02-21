@@ -3,9 +3,11 @@ log_error = /data/logs/mysql-error.log
 
 [mysqld]
 # GENERAL #
+sql-mode="STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
 default_storage_engine = InnoDB
 socket = /var/lib/mysql/mysql.sock
 pid_file = /var/lib/mysql/mysql.pid
+default-authentication-plugin=mysql_native_password
 
 # SAFETY #
 max-allowed-packet = 16M
@@ -21,14 +23,3 @@ innodb-buffer-pool-size        = 3G
 
 # MyISAM #
 key-buffer-size = 32M
-
-# CACHES AND LIMITS #
-tmp-table-size                 = 32M
-max-heap-table-size            = 32M
-query-cache-type               = 0
-query-cache-size               = 0
-max-connections                = 500
-thread-cache-size              = 50
-open-files-limit               = 65535
-table-definition-cache         = 1024
-table-open-cache               = 2048

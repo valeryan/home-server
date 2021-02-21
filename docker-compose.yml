@@ -2,13 +2,15 @@ version: "3"
 
 services:
   mysql:
-    image: mysql:5.7
+    image: mysql
     container_name: mysql
     restart: unless-stopped
     ports:
       - "3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
+    cap_add:
+      - SYS_NICE  # CAP_SYS_NICE
     volumes:
       - ./mysql:/var/lib/mysql
       - ./etc/mysql/conf.d:/etc/mysql/conf.d
@@ -99,6 +101,7 @@ services:
       - ./minecraft/data:/var/games/minecraft
     ports:
       - "25565:25565"
+      - "25566:25566"
       - "8443:8443"
     environment:
       - VIRTUAL_HOST=${MINEOS_HOST}
