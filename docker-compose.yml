@@ -1,9 +1,9 @@
 version: "3"
 
 services:
-  mysql:
-    image: mysql
-    container_name: mysql
+  db:
+    image: mariadb
+    container_name: db
     restart: unless-stopped
     ports:
       - "3306:3306"
@@ -12,7 +12,7 @@ services:
     cap_add:
       - SYS_NICE  # CAP_SYS_NICE
     volumes:
-      - ./mysql:/var/lib/mysql
+      - ./db:/var/lib/mysql
       - ./etc/mysql/conf.d:/etc/mysql/conf.d
     networks:
       - proxy-tier
@@ -54,11 +54,9 @@ services:
     image: nextcloud:fpm
     container_name: nextcloud-app
     depends_on:
-      - mysql
+      - db
     volumes:
       - ./nextcloud/app:/var/www/html
-      - ./nextcloud/data:/var/www/html/data
-      - ./nextcloud/config:/var/www/html/config
     restart: unless-stopped
     networks:
       - proxy-tier
@@ -72,8 +70,6 @@ services:
       - nextcloud-app
     volumes:
       - ./nextcloud/app:/var/www/html
-      - ./nextcloud/data:/var/www/html/data
-      - ./nextcloud/config:/var/www/html/config
     restart: unless-stopped
     environment:
       - VIRTUAL_HOST=${NEXTCLOUD_HOST}
@@ -81,6 +77,8 @@ services:
       - VIRTUAL_PORT=80
       - LETSENCRYPT_HOST=${NEXTCLOUD_HOST}
       - LETSENCRYPT_EMAIL=${LE_EMAIL}
+    ports:
+      - 8001:80
     networks:
       - proxy-tier
 
