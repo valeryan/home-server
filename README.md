@@ -4,13 +4,17 @@ My Docker configuration for a home server.
 
 ## What’s Inside
 
-1. An Nginx proxy server with Lets Encrypt integrated
-2. Nextcloud - personal cloud backup server
-3. Plex - A media streaming server
-4. Mineos - A web based Minecraft server management gui
-5. MySql - A database server
+1. Web Server = Nginx proxy server with Lets Encrypt integrated
+1. MySql - A database server
+
+## Additional Modules
+
+1. Mineos - Minecraft hosting server gui
+1. Nextcloud - Personal cloud backup server
+1. Plex - A media streaming server
+1. Passbolt - Password Management server
 
 ## Setup
 
 1. Copy example.env to .env and modify settings as desired. 
-2. Run `docker-compose build` and `docker-compose up`.
+1. Run `docker-compose build` and `docker-compose up`.
