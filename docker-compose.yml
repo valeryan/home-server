@@ -1,4 +1,4 @@
-version: '3'
+version: '3.9'
 services:
   proxy:
     build:
@@ -11,11 +11,11 @@ services:
       - '443:443'
     volumes:
       - '/var/run/docker.sock:/tmp/docker.sock:ro'
-      - './proxy/conf.d:/etc/nginx/conf.d'
-      - './proxy/certs:/etc/nginx/certs:ro'
-      - './proxy/html:/usr/share/nginx/html'
-      - './proxy/htpasswd:/etc/nginx/htpasswd:ro'
-      - './proxy/vhost.d:/etc/nginx/vhost.d'
+      - 'proxy-certs:/etc/nginx/certs:rw'
+      - 'proxy-conf:/etc/nginx/conf.d'
+      - 'proxy-html:/usr/share/nginx/html'
+      - 'proxy-htpasswd:/etc/nginx/htpasswd:ro'
+      - 'proxy-vhost:/etc/nginx/vhost.d'
     networks:
       - proxy-tier
   proxy-letsencrypt:
@@ -24,27 +24,26 @@ services:
     restart: unless-stopped
     volumes:
       - '/var/run/docker.sock:/var/run/docker.sock:ro'
-      - './proxy/certs:/etc/nginx/certs:rw'
-      - './proxy/conf.d:/etc/nginx/conf.d'
-      - './proxy/html:/usr/share/nginx/html'
-      - './proxy/htpasswd:/etc/nginx/htpasswd:ro'
-      - './proxy/vhost.d:/etc/nginx/vhost.d'
+      - 'proxy-certs:/etc/nginx/certs:rw'
+      - 'proxy-conf:/etc/nginx/conf.d'
+      - 'proxy-html:/usr/share/nginx/html'
+      - 'proxy-htpasswd:/etc/nginx/htpasswd:ro'
+      - 'proxy-vhost:/etc/nginx/vhost.d'
     environment:
       NGINX_PROXY_CONTAINER: '${PROXY}'
   db:
-    image: mariadb
+    image: mysql:8.0.23
     container_name: db
     restart: unless-stopped
-    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW --innodb_read_only_compressed=OFF
     ports:
       - '3306:3306'
     environment:
       - 'MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}'
-    cap_add:
-      - SYS_NICE
     volumes:
-      - './db:/var/lib/mysql'
+      - db-volume:/var/lib/mysql
       - './etc/mysql/conf.d:/etc/mysql/conf.d'
+    cap_add:
+      - SYS_NICE # Silence mbind errors: mbind: Operation not permitted
     networks:
       - proxy-tier
   redis:
@@ -56,69 +55,13 @@ services:
     networks:
       - proxy-tier
 
-  nextcloud-app:
-    image: 'nextcloud:fpm'
-    container_name: nextcloud-app
-    depends_on:
-      - db
-    volumes:
-      - './nextcloud/app:/var/www/html'
-    restart: unless-stopped
-    networks:
-      - proxy-tier
-  nextcloud-web:
-    build:
-      context: .
-      dockerfile: nextcloud.dockerfile
-    container_name: nextcloud-web
-    depends_on:
-      - nextcloud-app
-    volumes:
-      - './nextcloud/app:/var/www/html'
-    restart: unless-stopped
-    environment:
-      - 'VIRTUAL_HOST=${NEXTCLOUD_HOST}'
-      - 'VIRTUAL_NETWORK=${PROXY}'
-      - VIRTUAL_PORT=80
-      - 'LETSENCRYPT_HOST=${NEXTCLOUD_HOST}'
-      - 'LETSENCRYPT_EMAIL=${LE_EMAIL}'
-    ports:
-      - '8001:80'
-    networks:
-      - proxy-tier
-  plex:
-    image: plexinc/pms-docker
-    container_name: plex
-    hostname: PlexServer
-    restart: unless-stopped
-    ports:
-      - '32400:32400/tcp'
-      - '3005:3005/tcp'
-      - '8324:8324/tcp'
-      - '32469:32469/tcp'
-      - '1900:1900/udp'
-      - '32410:32410/udp'
-      - '32412:32412/udp'
-      - '32413:32413/udp'
-      - '32414:32414/udp'
-    environment:
-      - 'VIRTUAL_HOST=${PLEX_HOST}'
-      - 'VIRTUAL_NETWORK=${PROXY}'
-      - VIRTUAL_PORT=32400
-      - 'LETSENCRYPT_HOST=${PLEX_HOST}'
-      - 'LETSENCRYPT_EMAIL=${LE_EMAIL}'
-      - TZ=America/Chicago
-      - 'ADVERTISE_IP=http://${IP}:32400/'
-      - 'PUID=${PLEX_UID}'
-      - 'PGID=${PLEX_GID}'
-      - VERSION=latest
-    volumes:
-      - './plex/config:/config'
-      - './plex/temp:/transcode'
-      - './plex/data:/data'
-    networks:
-      - proxy-tier
-
+volumes:
+  db-volume:
+  proxy-certs:
+  proxy-conf:
+  proxy-html:
+  proxy-htpasswd:
+  proxy-vhost:
 networks:
   proxy-tier:
     driver: bridge
