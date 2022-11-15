@@ -4,15 +4,15 @@ My Docker configuration for a home server.
 
 ## What’s Inside
 
-1. Web Server = Nginx proxy server with Lets Encrypt integrated
+1. Web Server - Nginx proxy server with Lets Encrypt integrated
 1. MySql - A database server
+1. Redis - caching server
 
 ## Additional Modules
 
-1. Mineos - Minecraft hosting server gui
-1. Nextcloud - Personal cloud backup server
-1. Plex - A media streaming server
-1. Passbolt - Password Management server
+1. [Mineos](https://github.com/valeryan/home-server-mineos) - Minecraft hosting server gui
+1. [Nextcloud](https://github.com/valeryan/home-server-nextcloud) - Personal cloud backup server
+1. [Jellyfin](https://github.com/valeryan/home-server-jellyfin) - A media streaming server
 
 ## Setup
 
