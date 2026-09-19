@@ -1,67 +1,47 @@
-version: '3.9'
 services:
   proxy:
-    build:
-      context: .
-      dockerfile: proxy.dockerfile
-    container_name: '${PROXY}'
+    image: nginxproxy/nginx-proxy:1.11.6
+    container_name: "${PROXY}"
     restart: unless-stopped
     ports:
-      - '80:80'
-      - '443:443'
+      - "80:80"
+      - "443:443"
+    labels:
+      com.github.nginx-proxy.nginx: ""
+    environment:
+      TRUST_DOWNSTREAM_PROXY: "false"
     volumes:
-      - '/var/run/docker.sock:/tmp/docker.sock:ro'
-      - 'proxy-certs:/etc/nginx/certs:rw'
-      - 'proxy-conf:/etc/nginx/conf.d'
-      - 'proxy-html:/usr/share/nginx/html'
-      - 'proxy-htpasswd:/etc/nginx/htpasswd:ro'
-      - 'proxy-vhost:/etc/nginx/vhost.d'
+      - "${CONTAINER_SOCKET:-/var/run/docker.sock}:/tmp/docker.sock:ro"
+      - "proxy-certs:/etc/nginx/certs:ro"
+      - "proxy-html:/usr/share/nginx/html:ro"
+      - "proxy-htpasswd:/etc/nginx/htpasswd:ro"
+      - "proxy-vhost:/etc/nginx/vhost.d:ro"
+      - "./etc/nginx/proxy.conf:/etc/nginx/conf.d/zz-home-server.conf:ro"
     networks:
       - proxy-tier
   proxy-letsencrypt:
-    image: jrcs/letsencrypt-nginx-proxy-companion
-    container_name: '${LETS_ENCRYPT}'
+    image: nginxproxy/acme-companion:2.8.2
+    container_name: "${LETS_ENCRYPT}"
     restart: unless-stopped
+    depends_on:
+      - proxy
     volumes:
-      - '/var/run/docker.sock:/var/run/docker.sock:ro'
-      - 'proxy-certs:/etc/nginx/certs:rw'
-      - 'proxy-conf:/etc/nginx/conf.d'
-      - 'proxy-html:/usr/share/nginx/html'
-      - 'proxy-htpasswd:/etc/nginx/htpasswd:ro'
-      - 'proxy-vhost:/etc/nginx/vhost.d'
+      - "${CONTAINER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock:ro"
+      - "proxy-certs:/etc/nginx/certs:rw"
+      - "proxy-html:/usr/share/nginx/html:rw"
+      - "proxy-acme:/etc/acme.sh"
     environment:
-      NGINX_PROXY_CONTAINER: '${PROXY}'
-  db:
-    image: mysql:8.0.23
-    container_name: db
-    restart: unless-stopped
-    ports:
-      - '3306:3306'
-    environment:
-      - 'MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}'
-    volumes:
-      - db-volume:/var/lib/mysql
-      - './etc/mysql/conf.d:/etc/mysql/conf.d'
-    cap_add:
-      - SYS_NICE # Silence mbind errors: mbind: Operation not permitted
-    networks:
-      - proxy-tier
-  redis:
-    image: 'redis:alpine'
-    container_name: redis
-    restart: unless-stopped
-    ports:
-      - '6379:6379'
+      DEFAULT_EMAIL: "${LE_EMAIL}"
     networks:
       - proxy-tier
 
 volumes:
-  db-volume:
   proxy-certs:
-  proxy-conf:
   proxy-html:
   proxy-htpasswd:
   proxy-vhost:
+  proxy-acme:
 networks:
   proxy-tier:
+    name: proxy-tier
     driver: bridge
