@@ -31,7 +31,8 @@ services:
       - "proxy-html:/usr/share/nginx/html:rw"
       - "proxy-acme:/etc/acme.sh"
     environment:
-      DEFAULT_EMAIL: "${LE_EMAIL}"
+      DEFAULT_EMAIL: "${ACME_EMAIL}"
+      CREATE_DEFAULT_CERTIFICATE: "true"
     networks:
       - proxy-tier
 

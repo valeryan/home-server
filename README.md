@@ -27,6 +27,10 @@ Proxied application containers must join the external `proxy-tier` network and
 set `VIRTUAL_HOST` and `ACME_HOST` to their public hostname. Set `VIRTUAL_PORT`
 when the application does not expose port 80.
 
+The ACME companion creates a self-signed default certificate for unknown HTTPS
+hosts. It is only a fallback certificate; trusted Let's Encrypt certificates
+are still issued per application container after it declares `ACME_HOST`.
+
 The default HTTP-01 challenge requires public DNS to resolve to this server and
 inbound ports 80 and 443 to reach it. Use DNS-01 instead when those ports cannot
 be exposed. If upgrading older application stacks, replace `LETSENCRYPT_HOST`
